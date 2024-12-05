@@ -1,22 +1,19 @@
 use std::cmp::Ordering;
-use std::collections::{HashMap, HashSet};
+use std::collections::HashSet;
 
 advent_of_code::solution!(5);
 
-fn sort_pages(ordering_rules: &HashMap<&str, HashSet<&str>>, a: &str, b: &str) -> Ordering {
-    let a_after = ordering_rules.get(a);
-    let b_after = ordering_rules.get(b);
-
-    if a_after.is_some_and(|a_after_pages| a_after_pages.contains(b)) {
+fn sort_pages(ordering_rules: &HashSet<(u32, u32)>, a: u32, b: u32) -> Ordering {
+    if ordering_rules.contains(&(a, b)) {
         Ordering::Less
-    } else if b_after.is_some_and(|b_after_pages| b_after_pages.contains(a)) {
+    } else if ordering_rules.contains(&(b, a)) {
         Ordering::Greater
     } else {
         Ordering::Equal
     }
 }
 
-fn are_pages_sorted(ordering_rules: &HashMap<&str, HashSet<&str>>, a: &str, b: &str) -> bool {
+fn are_pages_sorted(ordering_rules: &HashSet<(u32, u32)>, a: u32, b: u32) -> bool {
     match sort_pages(ordering_rules, a, b) {
         Ordering::Less | Ordering::Equal => true,
         Ordering::Greater => false,
@@ -24,7 +21,7 @@ fn are_pages_sorted(ordering_rules: &HashMap<&str, HashSet<&str>>, a: &str, b: &
 }
 
 pub fn part_one(input: &str) -> Option<u32> {
-    let mut ordering_rules: HashMap<&str, HashSet<&str>> = HashMap::new();
+    let mut ordering_rules: HashSet<(u32, u32)> = HashSet::new();
     let mut sum = 0;
 
     let lines = input.lines();
@@ -32,26 +29,29 @@ pub fn part_one(input: &str) -> Option<u32> {
     let mut passed_separator = false;
 
     for line in lines {
-        if line == "" {
+        if line.is_empty() {
             passed_separator = true;
             continue;
         }
 
         if !passed_separator {
-            ordering_rules
-                .entry(&line[0..=1])
-                .or_default()
-                .insert(&line[3..=4]);
+            ordering_rules.insert((
+                line[0..=1].parse::<u32>().unwrap(),
+                line[3..=4].parse::<u32>().unwrap(),
+            ));
         } else {
-            let pages = line.split(",").collect::<Vec<_>>();
+            let pages = line
+                .split(",")
+                .map(|p| p.parse::<u32>().unwrap())
+                .collect::<Vec<_>>();
 
-            let is_sorted = pages.is_sorted_by(|a, b| are_pages_sorted(&ordering_rules, a, b));
+            let is_sorted = pages.is_sorted_by(|a, b| are_pages_sorted(&ordering_rules, *a, *b));
 
             if !is_sorted {
                 continue;
             }
 
-            sum += pages[pages.len() / 2].parse::<u32>().unwrap();
+            sum += pages[pages.len() / 2];
         }
     }
 
@@ -59,7 +59,7 @@ pub fn part_one(input: &str) -> Option<u32> {
 }
 
 pub fn part_two(input: &str) -> Option<u32> {
-    let mut ordering_rules: HashMap<&str, HashSet<&str>> = HashMap::new();
+    let mut ordering_rules: HashSet<(u32, u32)> = HashSet::new();
     let mut sum = 0;
 
     let lines = input.lines();
@@ -67,25 +67,28 @@ pub fn part_two(input: &str) -> Option<u32> {
     let mut passed_separator = false;
 
     for line in lines {
-        if line == "" {
+        if line.is_empty() {
             passed_separator = true;
             continue;
         }
 
         if !passed_separator {
-            ordering_rules
-                .entry(&line[0..=1])
-                .or_default()
-                .insert(&line[3..=4]);
+            ordering_rules.insert((
+                line[0..=1].parse::<u32>().unwrap(),
+                line[3..=4].parse::<u32>().unwrap(),
+            ));
         } else {
-            let mut pages = line.split(",").collect::<Vec<_>>();
+            let mut pages = line
+                .split(",")
+                .map(|p| p.parse::<u32>().unwrap())
+                .collect::<Vec<_>>();
 
-            let is_sorted = pages.is_sorted_by(|a, b| are_pages_sorted(&ordering_rules, a, b));
+            let is_sorted = pages.is_sorted_by(|a, b| are_pages_sorted(&ordering_rules, *a, *b));
 
             if !is_sorted {
-                pages.sort_by(|a, b| sort_pages(&ordering_rules, a, b));
+                pages.sort_by(|a, b| sort_pages(&ordering_rules, *a, *b));
 
-                sum += pages[pages.len() / 2].parse::<u32>().unwrap();
+                sum += pages[pages.len() / 2];
             }
         }
     }
