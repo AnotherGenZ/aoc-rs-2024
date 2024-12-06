@@ -3,6 +3,8 @@ use std::collections::HashSet;
 
 advent_of_code::solution!(6);
 
+type Grid = Vec<Vec<char>>;
+
 #[derive(Debug, Copy, Clone, PartialEq, Eq, Hash)]
 enum Orientation {
     Up,
@@ -11,22 +13,22 @@ enum Orientation {
     Right,
 }
 
-impl TryFrom<&u8> for Orientation {
+impl TryFrom<&char> for Orientation {
     type Error = ();
 
-    fn try_from(value: &u8) -> Result<Self, Self::Error> {
+    fn try_from(value: &char) -> Result<Self, Self::Error> {
         use Orientation::*;
         match value {
-            b'^' => Ok(Up),
-            b'v' => Ok(Down),
-            b'<' => Ok(Left),
-            b'>' => Ok(Right),
+            '^' => Ok(Up),
+            'v' => Ok(Down),
+            '<' => Ok(Left),
+            '>' => Ok(Right),
             _ => Err(()),
         }
     }
 }
 
-fn is_open(grid: &Vec<&[u8]>, x: usize, y: usize) -> bool {
+fn is_open(grid: &Grid, x: usize, y: usize) -> bool {
     let max_x = grid[0].len();
     let max_y = grid.len();
 
@@ -34,7 +36,7 @@ fn is_open(grid: &Vec<&[u8]>, x: usize, y: usize) -> bool {
         return true;
     }
 
-    if grid[y][x] == b'#' {
+    if grid[y][x] == '#' {
         return false;
     }
 
@@ -49,7 +51,7 @@ struct Position {
 }
 
 impl Position {
-    fn step(&mut self, grid: &Vec<&[u8]>) {
+    fn step(&mut self, grid: &Grid) {
         use Orientation::*;
 
         match self.orientation {
@@ -85,10 +87,10 @@ impl Position {
     }
 }
 
-impl TryFrom<(usize, usize, &u8)> for Position {
+impl TryFrom<(usize, usize, &char)> for Position {
     type Error = ();
 
-    fn try_from(value: (usize, usize, &u8)) -> Result<Self, Self::Error> {
+    fn try_from(value: (usize, usize, &char)) -> Result<Self, Self::Error> {
         let position = Position {
             x: value.0,
             y: value.1,
@@ -99,15 +101,15 @@ impl TryFrom<(usize, usize, &u8)> for Position {
     }
 }
 
-fn parse_grid(input: &str) -> Vec<&[u8]> {
+fn parse_grid(input: &str) -> Grid {
     input
         .trim()
         .lines()
-        .map(|line| line.as_bytes())
+        .map(|line| line.chars().collect())
         .collect::<Vec<_>>()
 }
 
-fn get_start_pos(grid: &Vec<&[u8]>) -> Position {
+fn get_start_pos(grid: &Grid) -> Position {
     grid.iter()
         .enumerate()
         .find_map(|(r_idx, row)| {
@@ -118,7 +120,7 @@ fn get_start_pos(grid: &Vec<&[u8]>) -> Position {
         .expect("Guard missing??")
 }
 
-fn get_guard_positions(grid: &Vec<&[u8]>) -> (Position, HashSet<(usize, usize)>) {
+fn get_guard_positions(grid: &Grid) -> (Position, HashSet<(usize, usize)>) {
     let max_x = grid[0].len();
     let max_y = grid.len();
 
@@ -140,7 +142,7 @@ fn get_guard_positions(grid: &Vec<&[u8]>) -> (Position, HashSet<(usize, usize)>)
     (starting_pos, guard_positions)
 }
 
-fn is_loop(grid: &Vec<&[u8]>, starting_pos: &Position) -> bool {
+fn is_loop(grid: &Grid, starting_pos: &Position) -> bool {
     let max_x = grid[0].len();
     let max_y = grid.len();
 
@@ -179,10 +181,8 @@ pub fn part_two(input: &str) -> Option<u32> {
             .par_iter()
             .filter(|(x, y)| {
                 let mut grid = grid.clone();
-                let mut new_row = Vec::from(grid[*y]);
-                new_row[*x] = b'#';
-                grid[*y] = &new_row;
-
+                grid[*y][*x] = '#';
+                    
                 is_loop(&grid, &starting_position)
             })
             .count() as u32,
