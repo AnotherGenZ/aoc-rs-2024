@@ -4,17 +4,13 @@ fn get_sorted_sides(input: &str) -> (Vec<u32>, Vec<u32>) {
     let mut left = Vec::new();
     let mut right = Vec::new();
 
-    let lines = input.split('\n');
+    let lines = input.lines();
 
     for line in lines {
-        let parts = line.trim().split("   ").collect::<Vec<&str>>();
+        let parts = line.split_once("   ").unwrap();
 
-        if parts.len() < 2 {
-            continue;
-        }
-
-        left.push(parts[0].parse::<u32>().unwrap());
-        right.push(parts[1].parse::<u32>().unwrap());
+        left.push(parts.0.parse::<u32>().unwrap());
+        right.push(parts.1.parse::<u32>().unwrap());
     }
 
     left.sort();
@@ -24,15 +20,9 @@ fn get_sorted_sides(input: &str) -> (Vec<u32>, Vec<u32>) {
 }
 
 pub fn part_one(input: &str) -> Option<u32> {
-    let mut total_distance = 0;
-
     let (left, right) = get_sorted_sides(input);
 
-    for i in 0..left.len() {
-        total_distance += left[i].abs_diff(right[i]);
-    }
-
-    Some(total_distance)
+    Some(left.iter().zip(right).map(|(&l, r)| l.abs_diff(r)).sum())
 }
 
 pub fn part_two(input: &str) -> Option<u32> {
@@ -45,8 +35,8 @@ pub fn part_two(input: &str) -> Option<u32> {
     for left_num in left {
         let mut occurs = 0;
 
-        while let Some(right_num) = right_iter.next_if(|right_num| **right_num <= left_num) {
-            if left_num == *right_num {
+        while let Some(&right_num) = right_iter.next_if(|&&right_num| right_num <= left_num) {
+            if left_num == right_num {
                 occurs += 1;
             }
         }
