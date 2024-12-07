@@ -1,4 +1,3 @@
-use itertools::{repeat_n, Itertools};
 use rayon::prelude::*;
 use std::iter::successors;
 
@@ -12,19 +11,44 @@ enum Operator {
 }
 
 impl Operator {
-    fn apply(&self, l: u64, r: u32) -> u64 {
+    fn apply(&self, l: u64, r: u64) -> u64 {
         use Operator::*;
 
         match self {
-            Add => l + (r as u64),
-            Multiply => l * (r as u64),
+            Add => l + r,
+            Multiply => l * r,
             Concatenate => {
                 let num_r_digits = successors(Some(r), |&n| (n >= 10).then(|| n / 10)).count();
 
-                l * 10_u64.pow(num_r_digits as u32) + (r as u64)
+                l * 10_u64.pow(num_r_digits as u32) + r
             }
         }
     }
+}
+
+fn solvable(test_value: u64, operands: &mut [u64], operators: &[Operator]) -> bool {
+    let num_operands = operands.len();
+
+    if num_operands == 2 {
+        return operators
+            .iter()
+            .any(|op| op.apply(operands[0], operands[1]) == test_value);
+    }
+
+    operators.iter().any(|op| {
+        let first = operands[0];
+        let second = operands[1];
+        let operands = &mut operands[1..num_operands];
+        operands[0] = op.apply(first, second);
+
+        if solvable(test_value, operands, operators) {
+            return true;
+        }
+
+        operands[0] = second;
+
+        false
+    })
 }
 
 fn sum_results(input: &str, operators: &[Operator]) -> u64 {
@@ -34,26 +58,14 @@ fn sum_results(input: &str, operators: &[Operator]) -> u64 {
         .filter_map(|line| {
             let (val, nums) = line.split_once(":").expect("Missing colon");
             let test_value = val.parse::<u64>().unwrap();
-            let operands = nums
+            let mut operands = nums
                 .trim()
                 .split(" ")
-                .map(|n| n.parse::<u32>().unwrap())
+                .map(|n| n.parse::<u64>().unwrap())
                 .collect::<Vec<_>>();
 
-            let num_slots = operands.len() - 1;
-            let permutations = repeat_n(operators, num_slots).multi_cartesian_product();
-
-            for permutation in permutations {
-                let result = permutation
-                    .iter()
-                    .enumerate()
-                    .fold(operands[0] as u64, |acc, (op_idx, op)| {
-                        op.apply(acc, operands[op_idx + 1])
-                    });
-
-                if result == test_value {
-                    return Some(test_value);
-                }
+            if solvable(test_value, &mut operands, operators) {
+                return Some(test_value);
             }
 
             None
