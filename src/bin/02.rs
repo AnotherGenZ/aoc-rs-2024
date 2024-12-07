@@ -68,7 +68,7 @@ fn parse_report(report: &str) -> Vec<i32> {
 }
 
 pub fn part_one(input: &str) -> Option<u32> {
-    let reports = input.trim().split('\n');
+    let reports = input.lines();
 
     Some(
         reports
