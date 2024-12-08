@@ -43,7 +43,7 @@ fn evaluate_pair(a: i32, b: i32, pattern: &mut Pattern) -> Option<bool> {
     has_error.then_some(false)
 }
 
-fn evaluate_report(levels: &Vec<i32>) -> bool {
+fn evaluate_report(levels: &[i32]) -> bool {
     let mut pattern = Pattern::Unknown;
 
     let windowed = levels.windows(2);

@@ -5,7 +5,7 @@ advent_of_code::solution!(3);
 pub fn part_one(input: &str) -> Option<u32> {
     let input = input.trim();
 
-    if input.len() == 0 {
+    if input.is_empty() {
         return Some(0);
     }
 
@@ -22,7 +22,7 @@ pub fn part_one(input: &str) -> Option<u32> {
 pub fn part_two(input: &str) -> Option<u32> {
     let input = input.trim();
 
-    if input.len() == 0 {
+    if input.is_empty() {
         return Some(0);
     }
 
@@ -42,10 +42,8 @@ pub fn part_two(input: &str) -> Option<u32> {
 
                 sum += a * b;
             }
-        } else if action.starts_with("don't") {
-            enabled = false;
         } else {
-            enabled = true;
+            enabled = !action.starts_with("don't");
         }
     }
 

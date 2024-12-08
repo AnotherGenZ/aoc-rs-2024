@@ -66,10 +66,8 @@ pub fn part_two(input: &str) -> Option<u32> {
 
     for (y, row) in grid.iter().enumerate() {
         for (x, char) in row.iter().enumerate() {
-            if *char == b'A' {
-                if has_x_mas(&grid, x, y) {
-                    count += 1;
-                }
+            if *char == b'A' && has_x_mas(&grid, x, y) {
+                count += 1;
             }
         }
     }
