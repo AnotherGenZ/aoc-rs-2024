@@ -51,7 +51,7 @@ fn search_around(grid: &Grid<char>, coord: Coord, value: char) -> Vec<Coord> {
     next
 }
 
-fn find_peaks(
+fn find_unique_peaks(
     grid: &Grid<char>,
     trail_nodes: &mut HashMap<Coord, HashSet<Coord>>,
     coord: Coord,
@@ -64,26 +64,26 @@ fn find_peaks(
         return HashSet::from_iter(next_coords);
     }
 
-    for next_coord in next_coords.iter() {
-        if let Some(trail_peaks) = trail_nodes.get(next_coord) {
+    for next_coord in next_coords {
+        if let Some(trail_peaks) = trail_nodes.get(&next_coord) {
             peaks.extend(trail_peaks);
         } else {
-            let next_coord_peaks = find_peaks(
+            let next_coord_peaks = find_unique_peaks(
                 grid,
                 trail_nodes,
-                *next_coord,
+                next_coord,
                 (next_value as u8 + 1) as char,
             );
 
             peaks.extend(&next_coord_peaks);
-            trail_nodes.insert(*next_coord, next_coord_peaks);
+            trail_nodes.insert(next_coord, next_coord_peaks);
         }
     }
 
     peaks
 }
 
-fn find_trails(
+fn count_peaks(
     grid: &Grid<char>,
     trail_nodes: &mut HashMap<Coord, u32>,
     coord: Coord,
@@ -100,7 +100,7 @@ fn find_trails(
         if let Some(trail_peaks) = trail_nodes.get(next_coord) {
             peaks += trail_peaks
         } else {
-            let next_coord_peaks = find_trails(
+            let next_coord_peaks = count_peaks(
                 grid,
                 trail_nodes,
                 *next_coord,
@@ -136,15 +136,12 @@ pub fn part_one(input: &str) -> Option<u32> {
     let grid = get_grid(input);
 
     let mut trail_nodes: HashMap<Coord, HashSet<Coord>> = HashMap::default();
-    let trailheads = get_trailheads(&grid);
 
-    let mut trailheads_score = 0;
-
-    for trailhead in trailheads {
-        let peaks = find_peaks(&grid, &mut trail_nodes, trailhead, (b'0' + 1) as char);
-
-        trailheads_score += peaks.len() as u32;
-    }
+    let trailheads_score = get_trailheads(&grid)
+        .map(|trailhead| {
+            find_unique_peaks(&grid, &mut trail_nodes, trailhead, (b'0' + 1) as char).len() as u32
+        })
+        .sum();
 
     Some(trailheads_score)
 }
@@ -153,15 +150,10 @@ pub fn part_two(input: &str) -> Option<u32> {
     let grid = get_grid(input);
 
     let mut trail_nodes: HashMap<Coord, u32> = HashMap::default();
-    let trailheads = get_trailheads(&grid);
 
-    let mut trailheads_rating = 0;
-
-    for trailhead in trailheads {
-        let trail_count = find_trails(&grid, &mut trail_nodes, trailhead, (b'0' + 1) as char);
-
-        trailheads_rating += trail_count;
-    }
+    let trailheads_rating = get_trailheads(&grid)
+        .map(|trailhead| count_peaks(&grid, &mut trail_nodes, trailhead, (b'0' + 1) as char))
+        .sum();
 
     Some(trailheads_rating)
 }
