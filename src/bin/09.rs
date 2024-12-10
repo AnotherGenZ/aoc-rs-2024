@@ -1,28 +1,12 @@
-use itertools::Itertools;
-use std::cmp::PartialEq;
+use std::collections::BTreeSet;
 
 advent_of_code::solution!(9);
 
-#[derive(Copy, Clone, Debug, PartialEq, Eq)]
-enum SectorId {
-    Free,
-    File(usize),
-}
-
 #[derive(Copy, Clone, Debug)]
-struct Sector {
-    id: SectorId,
+struct File {
+    id: usize,
     start_block: usize,
-    length: u32,
-}
-
-impl Sector {
-    fn is_free(&self) -> bool {
-        match self.id {
-            SectorId::Free => true,
-            SectorId::File(_) => false,
-        }
-    }
+    length: usize,
 }
 
 #[derive(Copy, Clone, Debug)]
@@ -40,14 +24,14 @@ impl DiskBlock {
     }
 }
 
-fn get_disk_map(input: &str) -> Vec<u32> {
+fn get_disk_map(input: &str) -> Vec<usize> {
     input
         .trim()
         .chars()
         .map(|length| {
             length
                 .to_digit(10)
-                .expect(&format!("Non-digit char {length}"))
+                .unwrap_or_else(|| panic!("Non-digit char {length}")) as usize
         })
         .collect()
 }
@@ -55,9 +39,9 @@ fn get_disk_map(input: &str) -> Vec<u32> {
 pub fn part_one(input: &str) -> Option<u64> {
     let disk_map = get_disk_map(input);
 
-    let disk_size: u32 = disk_map.iter().sum();
+    let disk_size = disk_map.iter().sum();
 
-    let mut disk = vec![DiskBlock::Free; disk_size as usize];
+    let mut disk = vec![DiskBlock::Free; disk_size];
 
     let mut i = 0;
 
@@ -68,7 +52,7 @@ pub fn part_one(input: &str) -> Option<u64> {
                 i += 1;
             }
         } else {
-            i += length as usize;
+            i += length;
         }
     }
 
@@ -115,88 +99,63 @@ pub fn part_one(input: &str) -> Option<u64> {
 
 pub fn part_two(input: &str) -> Option<u64> {
     let disk_map = get_disk_map(input);
-
     let sector_count = disk_map.len();
 
-    let mut disk = Vec::with_capacity(sector_count);
+    let mut files = Vec::with_capacity(sector_count / 2);
+    let mut free_space: Vec<BTreeSet<usize>> = vec![BTreeSet::new(); 10];
 
-    let mut i = 0;
+    let mut block = 0;
 
     for (d_idx, &length) in disk_map.iter().enumerate() {
         if d_idx % 2 == 0 {
-            disk.push(Sector {
-                id: SectorId::File(d_idx / 2),
-                start_block: i,
+            files.push(File {
+                id: d_idx / 2,
+                start_block: block,
                 length,
             });
         } else {
-            disk.push(Sector {
-                id: SectorId::Free,
-                start_block: i,
-                length,
-            });
+            free_space[length].insert(block);
         }
 
-        i += length as usize;
+        block += length;
     }
 
-    let disk2 = disk.clone();
-
-    for sector in disk2.iter().rev().filter(|sec| !sec.is_free()) {
-        let free_sector = disk
+    for file in files.iter_mut().rev() {
+        let free_sector = free_space
             .iter()
-            .copied()
-            .find_position(|sec| sec.is_free() && sec.length >= sector.length);
+            .enumerate()
+            .filter(|&(length, _)| length >= file.length)
+            .filter_map(|(sec_length, block_starts)| {
+                let first = block_starts.first();
+                first
+                    .is_some_and(|&block| block <= file.start_block)
+                    .then(|| (sec_length, *first.unwrap()))
+            })
+            .min_by_key(|sec| sec.1);
 
-        match free_sector {
-            None => {}
-            Some((idx, free_sec)) => {
-                let remaining = free_sec.length - sector.length;
+        if let Some((sec_length, free_sec_start_block)) = free_sector {
+            file.start_block = free_sec_start_block;
 
-                let (s_idx, _) = disk
-                    .iter()
-                    .find_position(|sec| sec.id == sector.id)
-                    .unwrap();
+            free_space[sec_length].remove(&free_sec_start_block);
 
-                if s_idx < idx {
-                    continue;
-                }
+            if sec_length > file.length {
+                let remaining = sec_length - file.length;
 
-                disk[s_idx] = Sector {
-                    id: SectorId::Free,
-                    start_block: sector.start_block,
-                    length: sector.length,
-                };
-                disk[idx] = Sector {
-                    id: sector.id,
-                    start_block: free_sec.start_block,
-                    length: sector.length,
-                };
-                disk.insert(
-                    idx + 1,
-                    Sector {
-                        id: SectorId::Free,
-                        start_block: free_sec.start_block + sector.length as usize,
-                        length: remaining,
-                    },
-                )
+                free_space[remaining].insert(free_sec_start_block + file.length);
             }
         }
     }
 
-    let sum = disk
+    let sum = files
         .iter()
-        .map(|sector| match sector.id {
-            SectorId::Free => 0,
-            SectorId::File(file_id) => {
-                let mut sum = 0;
+        .map(|file| {
+            let mut sum = 0;
 
-                for block in sector.start_block..(sector.start_block + sector.length as usize) {
-                    sum += (file_id * block) as u64;
-                }
-
-                sum
+            for block in file.start_block..(file.start_block + file.length) {
+                sum += (file.id * block) as u64;
             }
+
+            sum
         })
         .sum();
 
