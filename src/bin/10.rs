@@ -85,20 +85,20 @@ fn find_peaks(
 
 fn find_trails(
     grid: &Grid<char>,
-    trail_nodes: &mut HashMap<Coord, Vec<Coord>>,
+    trail_nodes: &mut HashMap<Coord, u32>,
     coord: Coord,
     next_value: char,
-) -> Vec<Coord> {
-    let mut peaks: Vec<Coord> = Vec::new();
+) -> u32 {
+    let mut peaks = 0;
     let next_coords = search_around(grid, coord, next_value);
 
     if next_value == '9' {
-        return next_coords;
+        return next_coords.len() as u32;
     }
 
     for next_coord in next_coords.iter() {
         if let Some(trail_peaks) = trail_nodes.get(next_coord) {
-            peaks.extend(trail_peaks);
+            peaks += trail_peaks
         } else {
             let next_coord_peaks = find_trails(
                 grid,
@@ -107,7 +107,7 @@ fn find_trails(
                 (next_value as u8 + 1) as char,
             );
 
-            peaks.extend(&next_coord_peaks);
+            peaks += next_coord_peaks;
             trail_nodes.insert(*next_coord, next_coord_peaks);
         }
     }
@@ -152,15 +152,15 @@ pub fn part_one(input: &str) -> Option<u32> {
 pub fn part_two(input: &str) -> Option<u32> {
     let grid = get_grid(input);
 
-    let mut trail_nodes: HashMap<Coord, Vec<Coord>> = HashMap::default();
+    let mut trail_nodes: HashMap<Coord, u32> = HashMap::default();
     let trailheads = get_trailheads(&grid);
 
     let mut trailheads_rating = 0;
 
     for trailhead in trailheads {
-        let trails = find_trails(&grid, &mut trail_nodes, trailhead, (b'0' + 1) as char);
+        let trail_count = find_trails(&grid, &mut trail_nodes, trailhead, (b'0' + 1) as char);
 
-        trailheads_rating += trails.len() as u32;
+        trailheads_rating += trail_count;
     }
 
     Some(trailheads_rating)
