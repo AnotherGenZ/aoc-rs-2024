@@ -3,7 +3,6 @@
 use itertools::Itertools;
 use rustc_hash::FxHashSet;
 use std::cmp::PartialEq;
-use std::collections::VecDeque;
 use std::ops::{Add, Index, Range};
 
 advent_of_code::solution!(12);
@@ -20,7 +19,6 @@ impl From<(i32, i32)> for Coord {
 impl From<OffsetLocation> for Coord {
     fn from(value: OffsetLocation) -> Self {
         match value {
-            OffsetLocation::None => Coord(0, 0),
             OffsetLocation::Above => Coord(0, -1),
             OffsetLocation::Below => Coord(0, 1),
             OffsetLocation::Left => Coord(-1, 0),
@@ -91,7 +89,6 @@ struct Region {
 
 #[derive(Clone, Copy, Debug, Eq, Ord, PartialEq, PartialOrd, Hash)]
 enum OffsetLocation {
-    None,
     Above,
     Below,
     Left,
@@ -101,7 +98,6 @@ enum OffsetLocation {
 impl OffsetLocation {
     fn right(&self) -> Self {
         match self {
-            OffsetLocation::None => OffsetLocation::None,
             OffsetLocation::Above => OffsetLocation::Right,
             OffsetLocation::Below => OffsetLocation::Left,
             OffsetLocation::Left => OffsetLocation::Above,
@@ -111,7 +107,6 @@ impl OffsetLocation {
 
     fn left(&self) -> Self {
         match self {
-            OffsetLocation::None => OffsetLocation::None,
             OffsetLocation::Above => OffsetLocation::Left,
             OffsetLocation::Below => OffsetLocation::Right,
             OffsetLocation::Left => OffsetLocation::Below,
@@ -127,66 +122,35 @@ const OFFSETS: [OffsetLocation; 4] = [
     OffsetLocation::Right,
 ];
 
-fn explore_region(grid: &Grid<char>, start: Coord, find_sides: bool) -> (Region, FxHashSet<Coord>) {
-    let region_plant = grid[start];
+fn explore_region(
+    grid: &Grid<char>,
+    explored: &mut FxHashSet<Coord>,
+    region: &mut Region,
+    fences: &mut Option<FxHashSet<(OffsetLocation, Coord)>>,
+    coord: Coord,
+) {
+    if explored.contains(&coord) {
+        return;
+    }
 
-    let mut perimeter = 0;
+    let region_plant = grid[coord];
 
-    let mut plots: FxHashSet<Coord> = FxHashSet::default();
-    let mut fences = FxHashSet::default();
-    let mut queue = VecDeque::from_iter([(OffsetLocation::None, start)]);
+    region.area += 1;
+    explored.insert(coord);
 
-    while let Some((offset_from, pos)) = queue.pop_front() {
-        if plots.contains(&pos) {
-            continue;
-        }
+    for offset in OFFSETS {
+        let offset_coord = coord + offset.into();
 
-        if grid.contains(&pos) && grid[pos] == region_plant {
-            plots.insert(pos);
-
-            for offset in OFFSETS {
-                queue.push_back((offset, pos + offset.into()));
-            }
+        if grid.contains(&offset_coord) && grid[offset_coord] == region_plant {
+            explore_region(grid, explored, region, fences, offset_coord)
         } else {
-            if find_sides {
-                fences.insert((offset_from, pos));
-            }
+            region.perimeter += 1;
 
-            perimeter += 1;
+            if let Some(fences) = fences {
+                fences.insert((offset, offset_coord));
+            }
         }
     }
-
-    let mut region = Region {
-        sides: 0,
-        area: plots.len(),
-        perimeter,
-    };
-
-    if find_sides {
-        let mut sides = 0;
-
-        while !fences.is_empty() {
-            let (fence_d, fence_coord) = *fences.iter().next().unwrap();
-
-            let mut fence = fence_coord;
-            let step = fence_d.right().into();
-            while fences.remove(&(fence_d, fence)) {
-                fence = fence + step;
-            }
-
-            let step = fence_d.left().into();
-            let mut fence = fence_coord + step;
-            while fences.remove(&(fence_d, fence)) {
-                fence = fence + step;
-            }
-
-            sides += 1;
-        }
-
-        region.sides = sides;
-    }
-
-    (region, plots)
 }
 
 fn find_regions(grid: &Grid<char>, find_sides: bool) -> Vec<Region> {
@@ -196,9 +160,44 @@ fn find_regions(grid: &Grid<char>, find_sides: bool) -> Vec<Region> {
     for j in 0..grid.y_bounds.end {
         for i in 0..grid.x_bounds.end {
             if !explored.contains(&(i, j).into()) {
-                let (region, region_plots) = explore_region(grid, (i, j).into(), find_sides);
+                let mut region = Region {
+                    sides: 0,
+                    perimeter: 0,
+                    area: 0,
+                };
 
-                explored.extend(region_plots);
+                let mut fences = if find_sides {
+                    Some(FxHashSet::default())
+                } else {
+                    None
+                };
+
+                explore_region(grid, &mut explored, &mut region, &mut fences, (i, j).into());
+
+                if let Some(fences) = &mut fences {
+                    let mut sides = 0;
+
+                    while !fences.is_empty() {
+                        let (fence_d, fence_coord) = *fences.iter().next().unwrap();
+
+                        let mut fence = fence_coord;
+                        let step = fence_d.right().into();
+                        while fences.remove(&(fence_d, fence)) {
+                            fence = fence + step;
+                        }
+
+                        let step = fence_d.left().into();
+                        let mut fence = fence_coord + step;
+                        while fences.remove(&(fence_d, fence)) {
+                            fence = fence + step;
+                        }
+
+                        sides += 1;
+                    }
+
+                    region.sides = sides;
+                }
+
                 regions.push(region);
             }
         }
