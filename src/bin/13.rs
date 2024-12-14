@@ -77,7 +77,7 @@ impl From<&str> for Machine {
 }
 
 pub fn part_one(input: &str) -> Option<usize> {
-    let machines = input.split("\n\n").map(|block| Machine::from(block));
+    let machines = input.split("\n\n").map(Machine::from);
 
     let tokens = machines
         .filter_map(|machine| machine.needed_tokens(false))
@@ -87,7 +87,7 @@ pub fn part_one(input: &str) -> Option<usize> {
 }
 
 pub fn part_two(input: &str) -> Option<usize> {
-    let machines = input.split("\n\n").map(|block| Machine::from(block));
+    let machines = input.split("\n\n").map(Machine::from);
 
     let tokens = machines
         .filter_map(|machine| machine.needed_tokens(true))
