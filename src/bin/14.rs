@@ -1,5 +1,4 @@
 use itertools::Itertools;
-use rustc_hash::FxHashSet;
 
 advent_of_code::solution!(14);
 
@@ -41,12 +40,10 @@ impl Robot {
             } else {
                 Quadrant::BottomLeft
             }
+        } else if top.contains(&y) {
+            Quadrant::TopRight
         } else {
-            if top.contains(&y) {
-                Quadrant::TopRight
-            } else {
-                Quadrant::BottomRight
-            }
+            Quadrant::BottomRight
         })
     }
 }
@@ -70,7 +67,7 @@ impl From<&str> for Robot {
     }
 }
 fn safety_factor(robots: &[Robot]) -> usize {
-    let mut quadrants = vec![0; 4];
+    let mut quadrants = [0; 4];
 
     for robot in robots {
         if let Some(quad) = robot.get_quadrant() {
@@ -79,7 +76,7 @@ fn safety_factor(robots: &[Robot]) -> usize {
         }
     }
 
-    quadrants[0..4].iter().fold(1, |acc, quad| acc * quad)
+    quadrants[0..4].iter().product()
 }
 
 pub fn part_one(input: &str) -> Option<usize> {
@@ -94,28 +91,68 @@ pub fn part_one(input: &str) -> Option<usize> {
     Some(safety_factor)
 }
 
-pub fn part_two(input: &str) -> Option<u32> {
-    let mut robots: Vec<Robot> = input.lines().map(|line| line.into()).collect_vec();
+fn mod_inverse(a: isize, m: isize) -> isize {
+    let a = a % m;
 
-    let mut step_count = 0;
-
-    loop {
-        step_count += 1;
-
-        let mut taken = FxHashSet::default();
-
-        for robot in robots.iter_mut() {
-            robot.step(1);
-
-            taken.insert(robot.pos);
-        }
-
-        if taken.len() == robots.len() {
-            break;
+    for x in 1..m {
+        if (a * x) % m == 1 {
+            return x;
         }
     }
 
-    Some(step_count)
+    1
+}
+
+fn calculate_variance(robots: &[Robot], x: bool) -> f64 {
+    let mean = robots
+        .iter()
+        .map(|r| (if x { r.pos.0 } else { r.pos.1 }) as f64)
+        .sum::<f64>()
+        / robots.len() as f64;
+
+    let variance = robots
+        .iter()
+        .map(|r| {
+            let diff = (if x { r.pos.0 } else { r.pos.1 }) as f64 - mean;
+            diff * diff
+        })
+        .sum::<f64>()
+        / robots.len() as f64;
+
+    variance
+}
+
+pub fn part_two(input: &str) -> Option<u32> {
+    let mut robots: Vec<Robot> = input.lines().map(|line| line.into()).collect_vec();
+
+    let mut bx = 0;
+    let mut bx_var = (10 * 100) as f64;
+    let mut by = 0;
+    let mut by_var = (10 * 1000) as f64;
+
+    for step in 0..HEIGHT {
+        for robot in robots.iter_mut() {
+            robot.step(1);
+        }
+
+        let x_var = calculate_variance(&robots, true);
+        let y_var = calculate_variance(&robots, false);
+
+        if x_var < bx_var {
+            bx = step;
+            bx_var = x_var;
+        }
+
+        if y_var < by_var {
+            by = step;
+            by_var = y_var;
+        }
+    }
+
+    let step_count =
+        (bx + (mod_inverse(WIDTH, HEIGHT) * (by - bx)) * WIDTH).rem_euclid(HEIGHT * WIDTH);
+
+    Some(step_count as u32)
 }
 
 #[cfg(test)]
